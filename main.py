@@ -1,21 +1,31 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 app=FastAPI()
-@app.get("/users")
-
-def queryusers(name:str=None ):
-    return {"This is query paramter ":name}
 
 
-#Default parameters 
-@app.get("/products")
-def querydefaultparams(limit :int=10):
-    return {"Limit":limit}
 
-#Multiple parameter 
-@app.get("/multiple")
-def multiplequeryparameters(name:str,rollno:int ):
-    return {
-        "nAME":name,
-        "rollno":rollno
+
+class User (BaseModel):
+    name:str
+    rollno:int
+    Address:address
+
+class address(BaseModel):
+    city:str
+    pincode:int
+
+
+@app.post("/create_post")
+def create_user(suer:User):
+    return{
+        "message":"Hello created user",
+        "Data":suer
     }
+
+
+
+
+
+
+
