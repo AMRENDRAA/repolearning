@@ -1,28 +1,37 @@
-from  fastapi import FastAPI ,HTTPException,Request
-from fastapi.responses import JSONResponse
-
-
+from fastapi import FastAPI ,Depends,Header,HTTPException
 app=FastAPI()
-class UserNotFountException(Exception):
-    def __init__(self,name:str):
-        self.name=name
-
-@app.exception_handler(UserNotFountException)
-
-def user_not_found_handler(request:Request,exc:UserNotFountException):
-    return JSONResponse(
-        status_code=404,
-        content={
-            "status":"error",
-            "message":f"User {exc.name} not found"
-        }
-    )
 
 
-@app.get("/user/{name}")
-def get_user(name:str):
-    if name!="Pandit":
-        raise UserNotFountException(name)
+# def common_function():
+#     print("this is common function will be used as dependency injection")
+
+
+# @app.get("/depends")
+# def dependf(data=Depends(common_function)):
+#     return data
+
+
+# @app.get("/injection")
+# def get_current_user(data=Depends(common_function)):
+#     return {
+#         data
+#     }
+
+
+def verify_token(token:str=Header(None)):
+    if token!="mysecrettoken":
+        raise HTTPException(
+            status_code=401,
+            detail="unauthorized"
+        )
+    return {
+        "user":"Authorized "
+    }
+
+
+@app.get("/secure")
+def check_secure(user=Depends(verify_token)):
     return{
-        "name":name
+        "message":"Secure",
+        "data":user
     }
