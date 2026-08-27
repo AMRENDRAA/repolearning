@@ -1,77 +1,32 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,status,HTTPException
 from pydantic import BaseModel
+app=FastAPI()
 
-app = FastAPI()
-
-todoslist = []
-
-
-class Todos(BaseModel):
-    id: int
-    task: str
-    iscompleted: bool
-
-
-@app.post("/todos")
-def create_todo(todo: Todos):
-
-    todoslist.append(todo)
-
+@app.post("/create_user",status_code=status.HTTP_201_CREATED)
+def create_user():
     return {
-        "message": "Created",
-        "todos": todo
+        "message":"done "
+    }
+
+@app.get("/user")
+def get_user():
+    return {
+        "status":"success",
+        "user":"user fetched",
+        "data":{
+            "hello":"Jai shree ram"
+        }
     }
 
 
-@app.get("/todos")
-def get_all_todos():
-
-    return {
-        "list": todoslist
-    }
-
-
-@app.get("/todos/{id}")
-def get_todo(id: int):
-
-    for todo in todoslist:
-
-        if todo.id == id:
-            return todo
-
-    return {"error": "Todo not found"}
-
-
-@app.put("/todos/{todo_id}")
-def update_todo(todo_id: int, updated_todo: Todos):
-
-    for index, todo in enumerate(todoslist):
-
-        if todo.id == todo_id:
-
-            todoslist[index] = updated_todo
-
-            return {
-                "message": "Data Updated",
-                "data": updated_todo
-            }
-
-    return {"error": "Todo not found"}
-
-
-@app.delete("/todos/{todo_id}")
-def delete_todo(todo_id: int):
-
-    for index, todo in enumerate(todoslist):
-
-        if todo.id == todo_id:
-
-            todoslist.pop(index)
-
-            return {
-                "message": "Data Deleted"
-            }
-
-    return {
-        "error": "Todo not found"
+@app.get("/user/{user_id}")
+def get_user(user_id:int):
+    if user_id!=1:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    return{
+        "id":1,
+        "name":"Amrendra"
     }
