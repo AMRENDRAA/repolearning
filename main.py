@@ -1,27 +1,45 @@
-import sqlite3
+from sqlalchemy import create_engine,Column ,Integer,String 
+from sqlalchemy.orm import declarative_base ,sessionmaker ,Session
+from fastapi import FastAPI ,Depends
 
-from fastapi import FastAPI
+
 app=FastAPI()
-conn=sqlite3.connect("Pandit.db",check_same_thread=False)
+#DB URL Pointing to a local sqlite file
+DATABASE_URL="sqlite:///./test.db"
 
-Cursor=conn.cursor()
+#create engine (connect args is o nly need for sqlite)
 
-Cursor.execute("""
+engine= create_engine(DATABASE_URL,connect_args={
+    "check_same_thread":False
+})
+
+SessionLocal=sessionmaker(autocommit=False,autoflush=False,bind=engine)
 
 
+Base=declarative_base()
 
-CREATE TABLE IF NOT EXISTS Todos (
-id INTEGER PRIMARY KEY,
-Title TEXT
-Completed TEXT
-)
 
-""")
-conn.commit()
+class Todo(Base):
+    __tablename__="todos"
+
+    id=Column(Integer,primary_key=True,index=True)
+    title=Column(String)
+    completed=Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db=SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @app.get("/")
-def connection_sql():
-    return {
-        "Message":"Jai shree ram"
+
+def home(db:Session=Depends(get_db)):
+    return{
+        "Message":"Db works"
     }
+
