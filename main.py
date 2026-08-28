@@ -1,37 +1,27 @@
-from fastapi import FastAPI ,Depends,Header,HTTPException
+import sqlite3
+
+from fastapi import FastAPI
 app=FastAPI()
+conn=sqlite3.connect("Pandit.db",check_same_thread=False)
+
+Cursor=conn.cursor()
+
+Cursor.execute("""
 
 
-# def common_function():
-#     print("this is common function will be used as dependency injection")
+
+CREATE TABLE IF NOT EXISTS Todos (
+id INTEGER PRIMARY KEY,
+Title TEXT
+Completed TEXT
+)
+
+""")
+conn.commit()
 
 
-# @app.get("/depends")
-# def dependf(data=Depends(common_function)):
-#     return data
-
-
-# @app.get("/injection")
-# def get_current_user(data=Depends(common_function)):
-#     return {
-#         data
-#     }
-
-
-def verify_token(token:str=Header(None)):
-    if token!="mysecrettoken":
-        raise HTTPException(
-            status_code=401,
-            detail="unauthorized"
-        )
+@app.get("/")
+def connection_sql():
     return {
-        "user":"Authorized "
-    }
-
-
-@app.get("/secure")
-def check_secure(user=Depends(verify_token)):
-    return{
-        "message":"Secure",
-        "data":user
+        "Message":"Jai shree ram"
     }
