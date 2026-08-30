@@ -1,101 +1,49 @@
-#uv pip install --system "python-jose[cryptography]" "passlib[bcrypt]" python-multipart
-from fastapi import FastAPI,HTTPException,Depends
-from jose import jwt ,JWTError
-from fastapi.security import OAuth2PasswordBearer ,OAuth2PasswordRequestForm 
-from datetime import datetime ,timedelta ,timezone 
-from passlib.context import CryptContext
-
+from fastapi import FastAPI ,UploadFile,File,HTTPException
+from fastapi.staticfiles import StaticFiles
+import os
+import shutil 
 
 app=FastAPI()
-#JWT CONFIG 
 
-SECRET_KEY="mysecret"
-ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-#Password hasing setup
+#STEP 1 ENSURE UPLOADS FOLDER EXIST
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+UPLOAD_DIR="uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
-#Oauthsetup
+#STEP2 STATIC FILE SETUP
 
-oauth2_schema=OAuth2PasswordBearer(tokenUrl="login")
+@app.post("/upload")
+def upload_file(file:UploadFile=File(...)):
+    filename=file.filename
+    file_path=os.path.join(UPLOAD_DIR,filename)
 
-#Dummy user DB 
-fake_user_db={
-    "admin":{
-        "username":"admin",
-        "hashed_password":pwd_context.hash("1234")
-    }
-}
+    if not filename:
+        raise HTTPException(status_code=400 ,detail="File not selected ")
+    with open(file_path,"wb") as buffer:
+        shutil.copyfileobj(file.file,buffer)
 
-#hash password 
-def hash_password(password:str):
-    return pwd_context.hash(password)
+        return {
+            "message":"File uploaded ",
+            "filename":filename,
+            "file_url":f"http://127.0.0.1:8000/files/{filename}"
+        }
 
+@app.get("/files/{filenames}")
 
-#verify password 
-def verify_password(plain_password,hashed_password):
-    return pwd_context.verify(plain_password,hashed_password)
+def get_file(filename:str):
+    file_path=os.path.join(UPLOAD_DIR,filename)
 
+    if not os.path.exists (file_path):
+        raise HTTPException(status_code=404,detail="File not found")
 
-def create_token(data:dict):
-    to_encode=data.copy()
-    expire=datetime.now(timezone.utc)+timedelta(minutes=30)
-    to_encode.update({
-        "exp":expire
-    })
-    token = jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
-    return token 
-
-
-#Login
-
-
-@app.post("/login")
-def login(form_data:OAuth2PasswordRequestForm=Depends()):
-    user=fake_user_db.get(form_data.username)
-    if not user or not verify_password(form_data.password,user["hashed_password"]):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid username or password ")
-    access_token=create_token({"sub":form_data.username})
     return {
-        "access_token":access_token,
-        "token_type":"bearer"
+       "file_url":f" http://127.0.0.1:8000/files/{filename}"
     }
 
 
-def verify_token(token:str=Depends(oauth2_schema)):
-    try:
-        payload=jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-
-        if username is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid token"
-            )
-        return username
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token "
-        )
-
-
-
-#protected route 
-
-@app.get("/protected")
-def protected_route(username:str= Depends(verify_token)):
-    return {
-        "message":"hello access success",
-        "user":username 
+@app.get("/")
+def home():
+    return{
+        "message":"File uploaded api running"
     }
-    
-
-
-
-
-
-
