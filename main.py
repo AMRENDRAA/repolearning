@@ -1,77 +1,101 @@
-from fastapi import FastAPI, HTTPException, Depends, Header
+#uv pip install --system "python-jose[cryptography]" "passlib[bcrypt]" python-multipart
+from fastapi import FastAPI,HTTPException,Depends
+from jose import jwt ,JWTError
+from fastapi.security import OAuth2PasswordBearer ,OAuth2PasswordRequestForm 
+from datetime import datetime ,timedelta ,timezone 
+from passlib.context import CryptContext
 
-#IMPORT the jwt module from python -jose to handle JSON WEB TOKEN ENCODING AND DECODING 
 
-
-from jose import jwt
-
-#IMPORT DATETIME UTILITIES TO HANDLE TOKEN EXPIRATION timestamps with timezones
-from datetime import datetime ,timedelta,timezone
-# Initialize the FastAPI application instance
 app=FastAPI()
-# Define the secret key used to sign the JWT (Keep this secret and secure in production)
-SECRET_KEY="MYsecret"
+#JWT CONFIG 
 
+SECRET_KEY="mysecret"
 ALGORITHM="HS256"
-# Define a helper function to generate a new JWT access token
-#create token 
-def create_token(data:dict):
-    # Create a shallow copy of the input payload dictionary to avoid modifying the original data
-    to_encode=data.copy()
-     # Add the standard "exp" (expiration) claim to the payload data dictionary
-    expire= datetime.now(timezone.utc)+timedelta(minutes=30)
-    # Add the standard "exp" (expiration) claim to the payload data dictionary
-    to_encode.update({
-        "exp":expire 
-    })
-    # Sign and encode the payload into a JWT string using the secret key and algorithm
-    token=jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
-    return token
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+#Password hasing setup
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+#Oauthsetup
+
+oauth2_schema=OAuth2PasswordBearer(tokenUrl="login")
+
+#Dummy user DB 
+fake_user_db={
+    "admin":{
+        "username":"admin",
+        "hashed_password":pwd_context.hash("1234")
+    }
+}
+
+#hash password 
+def hash_password(password:str):
+    return pwd_context.hash(password)
+
+
+#verify password 
+def verify_password(plain_password,hashed_password):
+    return pwd_context.verify(plain_password,hashed_password)
+
+
+def create_token(data:dict):
+    to_encode=data.copy()
+    expire=datetime.now(timezone.utc)+timedelta(minutes=30)
+    to_encode.update({
+        "exp":expire
+    })
+    token = jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
+    return token 
+
+
+#Login
 
 
 @app.post("/login")
-# Define the login route handler function accepting username and password as query parameters
-def login (username :str,password:str):
-    # Check if the provided credentials match the hardcoded values ("admin" and "1234")
-    if username!="admin" or password!="1234":
+def login(form_data:OAuth2PasswordRequestForm=Depends()):
+    user=fake_user_db.get(form_data.username)
+    if not user or not verify_password(form_data.password,user["hashed_password"]):
         raise HTTPException(
-            status_code=401,
-            detail="Invalid Username or password"
-        )
-    # Call the helper function to generate a JWT token containing the username as the subject ("sub")
-
-    token =create_token({
-        "sub":username 
-    })
-    # Return the generated access token inside a JSON response body
+            status_code=400,
+            detail="Invalid username or password ")
+    access_token=create_token({"sub":form_data.username})
     return {
-        "accesstoken":token
+        "access_token":access_token,
+        "token_type":"bearer"
     }
 
-    #token verification
 
-    # Define a dependency function to extract and validate the JWT token from incoming request headers
-
-def varify_token(token: str=Header(None),alias="token"):
+def verify_token(token:str=Depends(oauth2_schema)):
     try:
-        # Decode and verify the token signature using the secret key and allowed algorithm
         payload=jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
-        # Return the verified payload data (dictionary) if the token is valid
-        return payload
-    except:
+        username: str = payload.get("sub")
+
+        if username is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token"
+            )
+        return username
+    except JWTError:
         raise HTTPException(
             status_code=401,
-            detail="Invalid username or password or expired"
+            detail="Invalid token "
         )
-#protected routed
 
-@app.get("/secure")
-# Define the endpoint function, using Depends to enforce the token verification before executing the route
-def secure_data(user=Depends(varify_token)):
+
+
+#protected route 
+
+@app.get("/protected")
+def protected_route(username:str= Depends(verify_token)):
     return {
-        "message":"Secure data accessed",
-        "user":user
+        "message":"hello access success",
+        "user":username 
     }
+    
+
+
+
+
 
 
