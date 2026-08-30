@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
-from dotenv import load_dotenv 
+from config import settings 
 
 app=FastAPI()
-load_dotenv()
-SECRET_KEY=os.getenv("SECRET_KEY")
+
+
+SECRET_KEY=settings.SECRET_KEY
+
 
 @app.get("/")
 def home():
