@@ -17,5 +17,3 @@ def about():
 @app.get("/users")
 def user_get():
     return {"message":"This is users router"}
-
-
