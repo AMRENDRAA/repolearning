@@ -113,5 +113,6 @@ def delete_blog(id:int ,db:Session=Depends(get_db)):
     
     
 
-
-
+@app.get("/users")
+def user_get():
+    return {"message":"This is users router"}
